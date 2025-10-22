@@ -1,0 +1,102 @@
+# YOLOv11 Segmentation - Optimized Training Configuration
+# 곤포사일리지 데이터셋 최적화 설정
+# 데이터셋 특성: 324 images, 970 objects, 1 class, 1024x1024 resolution
+
+# Dataset
+data: E:/namwon_ai/dataset_silage_bale_rgb/dataset.yaml
+
+# Model - Small dataset에 적합한 작은 모델 사용
+model: yolo11n-seg.pt  # nano 모델 (과적합 방지)
+
+# Training - 작은 데이터셋에 맞춘 설정
+epochs: 150            # 작은 데이터셋이므로 충분한 epoch
+batch: 8               # 16 → 8 (작은 데이터셋, 더 안정적인 학습)
+imgsz: 1024            # 원본 해상도 유지 (640 → 1024)
+device: 0
+workers: 4             # 8 → 4 (안정성)
+
+# Project
+project: runs/segment
+name: silage_bale_optimized
+
+# Optimizer - 작은 데이터셋 최적화
+optimizer: AdamW
+lr0: 0.001             # 0.01 → 0.001 (더 작은 LR로 안정적 학습)
+lrf: 0.01              # Final LR factor
+momentum: 0.937
+weight_decay: 0.001    # 0.0005 → 0.001 (과적합 방지 강화)
+
+# Scheduler
+cos_lr: true           # Cosine LR scheduler 사용 (부드러운 학습)
+
+# Training settings - 작은 데이터셋 전략
+patience: 100          # 50 → 100 (충분한 patience)
+save: true
+save_period: 10
+close_mosaic: 20       # 10 → 20 (마지막 20 epoch에서 mosaic 비활성화)
+
+# Regularization - 과적합 방지 강화
+dropout: 0.1           # Dropout 추가 (과적합 방지)
+label_smoothing: 0.05  # Label smoothing (과적합 방지)
+
+# Data Augmentation - 작은 데이터셋에 적합하게 강화
+# HSV Augmentation
+hsv_h: 0.02            # 0.015 → 0.02 (색상 변화 증가)
+hsv_s: 0.8             # 0.7 → 0.8 (채도 변화 증가)
+hsv_v: 0.5             # 0.4 → 0.5 (명도 변화 증가)
+
+# Geometric Augmentation
+degrees: 10.0          # 0.0 → 10.0 (회전 추가 - 곤포는 방향 무관)
+translate: 0.15        # 0.1 → 0.15 (이동 증가)
+scale: 0.7             # 0.5 → 0.7 (크기 변화 증가)
+shear: 5.0             # 0.0 → 5.0 (전단 변환 추가)
+perspective: 0.0005    # 0.0 → 0.0005 (원근 변환 약간 추가)
+
+# Flip Augmentation
+flipud: 0.0            # 위아래 뒤집기 (항공/위성 이미지는 안함)
+fliplr: 0.5            # 좌우 뒤집기 유지
+
+# Advanced Augmentation - 작은 데이터셋 필수
+mosaic: 1.0            # Mosaic augmentation (4장 합성)
+mixup: 0.15            # 0.0 → 0.15 (Mixup 추가 - 데이터 증강)
+copy_paste: 0.3        # 0.0 → 0.3 (Copy-paste augmentation 추가)
+
+# Loss weights - 단일 클래스 최적화
+box: 7.5               # Box loss weight
+seg: 2.5               # Segmentation loss weight (default)
+cls: 0.5               # Class loss weight (단일 클래스이므로 낮춤)
+
+# Validation
+val: true
+plots: true
+verbose: true
+
+# Multi-scale training (성능 향상)
+rect: false            # Rectangular training 비활성화
+multi_scale: true      # Multi-scale training 활성화 (+/- 50% scale)
+
+# Performance optimization
+amp: true              # Automatic Mixed Precision (학습 속도 향상)
+deterministic: false   # 속도 우선
+
+# 설정 설명:
+# 1. 작은 데이터셋 (324장) → 과적합 방지 전략
+#    - 더 작은 learning rate (0.001)
+#    - 높은 weight decay (0.001)
+#    - Dropout, Label smoothing 추가
+#    - 강력한 augmentation (mixup, copy_paste)
+#
+# 2. 단일 클래스 → cls loss weight 낮춤
+#
+# 3. 고해상도 이미지 (1024x1024) → imgsz=1024 유지
+#
+# 4. 충분한 epoch (150) + 높은 patience (100)
+#    - 작은 데이터셋은 수렴이 느릴 수 있음
+#
+# 5. Geometric augmentation 강화
+#    - 회전, 전단, 크기 변화 추가
+#    - 곤포사일리지는 방향 무관하므로 회전 가능
+#
+# 6. Copy-paste augmentation
+#    - Segmentation에 매우 효과적
+#    - 객체를 복사하여 다른 위치에 붙임

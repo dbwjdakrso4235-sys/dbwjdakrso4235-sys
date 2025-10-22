@@ -1,0 +1,99 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+pip-wheel-metadata/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Virtual Environment
+venv/
+ENV/
+env/
+.venv
+
+# PyTorch / YOLO Models (large files)
+yolo11*.pt
+*.pth
+*.onnx
+*.tflite
+*.pb
+*.weights
+
+# Training Results (exclude large model files, keep metrics)
+runs/*/weights/
+runs/*/train/
+runs/*/val/
+!runs/*/*.csv
+!runs/*/*.png
+!runs/*/*.jpg
+!runs/*/results.csv
+!runs/*/confusion_matrix.png
+
+# TensorBoard
+events.out.tfevents.*
+
+# Data (exclude datasets, keep configs)
+datasets/
+data/
+!data/*.yaml
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# Environment
+.env
+.env.local
+*.pem
+
+# Next.js (if web interface added later)
+/node_modules
+/.next/
+/out/
+next-env.d.ts
+*.tsbuildinfo
+/node_modules
+/.pnp
+.pnp.*
+
+# Temporary files
+*.log
+*.tmp
+*.bak
+
+# Vercel
+.vercel

@@ -1,0 +1,86 @@
+# YOLOv11 Segmentation - Advanced Training Configuration
+# YOLOv11s-seg (Small) 모델 - 더 높은 성능 목표
+# baseline 학습 후 성능 개선이 필요할 때 사용
+
+# Dataset
+data: E:/namwon_ai/dataset_silage_bale_rgb/dataset.yaml
+
+# Model - Small 모델 (nano보다 높은 용량)
+model: yolo11s-seg.pt
+
+# Training
+epochs: 200            # 더 많은 epoch
+batch: 8               # Small 모델이므로 batch=8 유지
+imgsz: 1024
+device: 0
+workers: 4
+
+# Project
+project: runs/segment
+name: silage_bale_advanced
+
+# Optimizer
+optimizer: AdamW
+lr0: 0.0008            # Small 모델은 더 작은 LR
+lrf: 0.01
+momentum: 0.937
+weight_decay: 0.0015   # 더 강한 regularization
+
+# Scheduler
+cos_lr: true
+warmup_epochs: 5       # Warmup 추가
+warmup_momentum: 0.8
+warmup_bias_lr: 0.1
+
+# Training settings
+patience: 120
+save: true
+save_period: 10
+close_mosaic: 30       # 마지막 30 epoch에서 mosaic 비활성화
+
+# Regularization
+dropout: 0.15          # 더 강한 dropout
+label_smoothing: 0.08
+
+# Data Augmentation - 최대 강도
+hsv_h: 0.025
+hsv_s: 0.9
+hsv_v: 0.6
+
+degrees: 15.0          # 더 큰 회전
+translate: 0.2
+scale: 0.9
+shear: 8.0
+perspective: 0.001
+
+flipud: 0.0
+fliplr: 0.5
+
+mosaic: 1.0
+mixup: 0.2             # 더 강한 mixup
+copy_paste: 0.4        # 더 강한 copy_paste
+
+# Loss weights
+box: 7.5
+seg: 3.0               # Segmentation 강조
+cls: 0.5
+
+# Validation
+val: true
+plots: true
+verbose: true
+
+# Advanced features
+rect: false
+multi_scale: true
+amp: true
+deterministic: false
+
+# EMA (Exponential Moving Average)
+ema: true              # EMA 활성화 (안정적인 학습)
+
+# 이 설정은:
+# - baseline보다 더 큰 모델 (s-seg)
+# - 더 강한 augmentation
+# - 더 긴 학습 (200 epochs)
+# - Warmup + EMA로 안정성 강화
