@@ -180,8 +180,8 @@ class SilageBaleDetectionPipeline:
         logger.info("=" * 80)
         logger.info("파이프라인 완료!")
         logger.info(f"총 처리 시간: {stats['elapsed_time_formatted']}")
-        logger.info(f"총 검출: {stats['total_detections']}개")
-        logger.info(f"평균 신뢰도: {stats['avg_confidence']:.2%}")
+        logger.info(f"총 검출: {stats['detections']['total_detections']}개")
+        logger.info(f"평균 신뢰도: {stats['confidence']['avg_confidence']:.2%}")
         logger.info(f"결과: {output_gpkg}")
         logger.info("=" * 80)
 
@@ -256,10 +256,22 @@ class SilageBaleDetectionPipeline:
     def _save_statistics(self, stats: Dict[str, Any]):
         """통계를 파일로 저장"""
 
-        # JSON 저장
+        # JSON 저장 (numpy int64 등을 일반 int로 변환)
+        def convert_numpy(obj):
+            import numpy as np
+            if isinstance(obj, (np.int_, np.intc, np.intp, np.int8,
+                np.int16, np.int32, np.int64, np.uint8,
+                np.uint16, np.uint32, np.uint64)):
+                return int(obj)
+            elif isinstance(obj, (np.float_, np.float16, np.float32, np.float64)):
+                return float(obj)
+            elif isinstance(obj, np.ndarray):
+                return obj.tolist()
+            return obj
+
         json_path = self.output_dir / "reports" / "statistics.json"
         with open(json_path, 'w', encoding='utf-8') as f:
-            json.dump(stats, f, indent=2, ensure_ascii=False)
+            json.dump(stats, f, indent=2, ensure_ascii=False, default=convert_numpy)
         logger.info(f"통계 JSON 저장: {json_path}")
 
         # CSV 저장 (폴리곤별 상세)

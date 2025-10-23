@@ -251,10 +251,14 @@ class CropProcessor:
                 results.append(cropped)
 
                 if save_images:
-                    # BGR로 변환하여 저장 (OpenCV)
-                    img_bgr = cv2.cvtColor(cropped.image, cv2.COLOR_RGB2BGR)
-                    output_path = output_dir / f"{cropped.polygon_id}.png"
-                    cv2.imwrite(str(output_path), img_bgr)
+                    # 이미지가 비어있지 않은지 확인
+                    if cropped.image.size > 0:
+                        # BGR로 변환하여 저장 (OpenCV)
+                        img_bgr = cv2.cvtColor(cropped.image, cv2.COLOR_RGB2BGR)
+                        output_path = output_dir / f"{cropped.polygon_id}.png"
+                        cv2.imwrite(str(output_path), img_bgr)
+                    else:
+                        logger.warning(f"{cropped.polygon_id}: 빈 이미지, 저장 건너뜀")
 
         logger.info(f"배치 크롭 완료: {len(results)}/{len(polygon_ids)} 성공")
 
