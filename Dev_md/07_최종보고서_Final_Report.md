@@ -508,9 +508,209 @@ Precision: 96.5%
 
 ---
 
-## 7. 결론
+## 7. 곤포사일리지 추론 시스템
 
-### 7.1 프로젝트 성과 요약
+### 7.1 시스템 개요
+
+**목적**: Shapefile로 정의된 영역만 대용량 TIF에서 추출하여 곤포사일리지 자동 검출
+
+**워크플로우**:
+```
+1. SHP 파일에서 폴리곤 로드
+2. 각 폴리곤별로 대용량 TIF 크롭 (25.8GB)
+3. 크롭된 영역에서 곤포사일리지 검출 (YOLOv11)
+4. 결과를 GeoPackage로 저장
+5. 통계 보고서 생성
+```
+
+### 7.2 시스템 아키텍처
+
+#### 핵심 모듈
+
+**1. CropProcessor** (`inference_system/src/crop_processor.py`)
+- **기능**: SHP 기반 TIF 크롭 처리
+- **특징**:
+  - 좌표계 자동 감지 및 변환
+  - 4-band TIF → RGB 자동 변환 (기존 전처리 재사용)
+  - 메모리 효율적 처리 (rasterio window 읽기)
+  - 면적 기반 필터링 지원
+
+**2. InferenceEngine** (`inference_system/src/inference_engine.py`)
+- **기능**: 곤포사일리지 검출 엔진
+- **특징**:
+  - 학습된 YOLOv11n-seg 모델 활용 (mAP50: 92.2%)
+  - 마스크 → 폴리곤 자동 변환
+  - GeoPackage 형식 출력 (좌표계 보존)
+  - 시각화 자동 생성
+
+**3. SilageBaleDetectionPipeline** (`inference_system/src/pipeline.py`)
+- **기능**: 통합 파이프라인
+- **특징**:
+  - CropProcessor + InferenceEngine 통합
+  - 자동 워크플로우 관리
+  - 통계 보고서 자동 생성 (JSON, CSV, TXT)
+  - 진행률 표시
+
+### 7.3 기술적 특징
+
+#### saryo4model 참조 및 적용
+
+| 기술 | saryo4model | 곤포사일리지 시스템 | 적용 여부 |
+|------|-------------|---------------------|----------|
+| **타일 처리** | 1024x1024 | 크롭 영역 직접 처리 | ⚠️ 미적용 (크롭 크기 가변) |
+| **중첩 병합** | 50% overlap | - | ⚠️ 미적용 (크롭 단위 처리) |
+| **후처리** | 형태학 + 평활화 | YOLO 내장 후처리 | ✅ 모델에 내장 |
+| **GeoPackage 출력** | ✅ | ✅ | ✅ 적용 |
+| **좌표계 변환** | ✅ | ✅ | ✅ 적용 |
+| **SHP 크롭** | ❌ | ✅ | ✅ 신규 구현 |
+
+#### 혁신적 접근
+
+1. **SHP 기반 선택적 처리**
+   - 전체 TIF가 아닌 필요한 영역만 크롭
+   - 25.8GB TIF를 메모리에 올리지 않고 부분 읽기
+   - 처리 시간 대폭 단축 (예상: 1,000개 폴리곤 < 2시간)
+
+2. **기존 시스템 재사용**
+   - 학습된 고성능 모델 그대로 활용 (mAP50: 92.2%)
+   - 전처리 모듈 (`utils/preprocess.py`) 재사용
+   - 검증된 파이프라인 기반 구축
+
+3. **자동화 및 통합**
+   - 원스톱 파이프라인 (크롭 → 추론 → 저장)
+   - 자동 보고서 생성
+   - 시각화 자동 저장
+
+### 7.4 구현 현황
+
+#### 완료된 작업 ✅
+
+1. **CropProcessor 구현**
+   - SHP 로드 및 검증
+   - 좌표계 자동 변환
+   - 폴리곤별 TIF 크롭
+   - 4-band → RGB 변환
+   - 배치 처리 지원
+   - 면적 필터링
+   - 커버리지 시각화
+
+2. **InferenceEngine 구현**
+   - YOLO 모델 로드
+   - 단일/배치 추론
+   - 마스크 → 폴리곤 변환
+   - 지리 좌표 변환
+   - GeoPackage 저장
+   - 시각화 생성
+
+3. **통합 파이프라인 구현**
+   - CropProcessor + InferenceEngine 통합
+   - 자동 워크플로우
+   - 통계 보고서 생성 (JSON, CSV, TXT)
+   - 진행률 표시
+   - 에러 처리
+
+4. **문서화**
+   - 개발 계획서 (`Dev_md/09_곤포사일리지_추론시스템_개발계획.md`)
+   - 시스템 README (`inference_system/README.md`)
+   - 실행 예제 (`inference_system/examples/run_inference.py`)
+   - 사용 가이드
+
+#### 테스트 결과
+
+**환경**:
+```bash
+TIF: E:/namwon_ai/input_tif/금지면_1차.tif (25.86GB)
+SHP: E:/namwon_ai/saryo_jeongbo/saryo_4m.shp (7,006개 폴리곤)
+Model: runs/segment/silage_optimized/weights/best.pt
+```
+
+**크롭 테스트 (3개 폴리곤)**:
+- ⚠️ **이슈 발견**: 폴리곤이 TIF 영역 밖에 위치
+- **원인**: SHP와 TIF의 공간적 불일치
+- **대응**:
+  - 좌표계 자동 변환 구현 완료 (PROJCS → EPSG:5186)
+  - 유효성 검사 로직 추가
+  - 사용자 피드백 메시지 개선
+
+**권장 사항**:
+- 실제 데이터 테스트 전 SHP와 TIF의 공간적 중첩 확인 필요
+- QGIS 등 GIS 도구로 사전 검증 권장
+- 또는 다른 TIF/SHP 조합으로 테스트
+
+### 7.5 성능 목표
+
+| 지표 | 목표 | 근거 |
+|------|------|------|
+| **크롭 속도** | 50개/분 | rasterio 빠른 window 읽기 |
+| **추론 속도** | 11.3ms/영역 | 기존 테스트 결과 |
+| **전체 처리** | 1,000개 < 2시간 | 평균 7.2초/폴리곤 |
+| **검출 정확도** | mAP50 > 90% | 학습 모델 92.2% |
+| **메모리 사용** | < 16GB RAM | 타일 기반 처리 |
+
+### 7.6 출력 형식
+
+#### GeoPackage (*.gpkg)
+```
+컬럼:
+- geometry: Polygon (좌표계 보존)
+- polygon_id: 원본 폴리곤 ID
+- detection_id: 검출 객체 ID
+- confidence: 신뢰도 (0-1)
+- class_name: "곤포사일리지"
+- area_pixels: 픽셀 면적
+- area_m2: 실제 면적 (m²)
+```
+
+#### 통계 보고서
+- **statistics.json**: 전체 통계 (JSON)
+- **polygon_details.csv**: 폴리곤별 상세 (CSV)
+- **summary.txt**: 요약 보고서 (TXT)
+
+### 7.7 향후 계획
+
+#### 단기 (1주)
+- [ ] 실제 데이터로 통합 테스트 (TIF/SHP 공간 중첩 확인 후)
+- [ ] 성능 벤치마킹 (처리 속도, 메모리 사용)
+- [ ] 에러 처리 강화
+
+#### 중기 (1개월)
+- [ ] saryo4model의 타일 처리 통합 (대형 크롭 영역 대비)
+- [ ] 멀티프로세싱 지원 (속도 향상)
+- [ ] 캐싱 시스템 구현 (재처리 방지)
+
+#### 장기 (3개월)
+- [ ] 웹 인터페이스 구축 (FastAPI + Leaflet)
+- [ ] 실시간 모니터링 대시보드
+- [ ] API 서버 배포
+
+### 7.8 기술 문서
+
+**참조 문서**:
+- [개발 계획서](09_곤포사일리지_추론시스템_개발계획.md) - 상세 설계 및 Sonnet/Opus 작업 분담
+- [시스템 README](../inference_system/README.md) - 사용 가이드 및 API 문서
+- [saryo4model](E:/namwon_ai/saryo4model/) - 참조 시스템
+
+**디렉토리 구조**:
+```
+inference_system/
+├── src/
+│   ├── crop_processor.py         # SHP 기반 크롭
+│   ├── inference_engine.py       # YOLO 추론
+│   └── pipeline.py               # 통합 파이프라인
+├── examples/
+│   └── run_inference.py          # 실행 예제
+├── output/                        # 결과 출력
+│   ├── silage_bale_detections.gpkg
+│   ├── visualizations/
+│   └── reports/
+└── README.md
+```
+
+---
+
+## 8. 결론
+
+### 8.1 프로젝트 성과 요약
 
 #### 정량적 성과
 ```yaml
