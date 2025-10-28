@@ -220,6 +220,7 @@ Epoch 150:  92.2% mAP50 (최종)
 #### 주요 기능
 - **SHP 기반 선택적 처리**: Shapefile로 정의된 영역만 크롭하여 처리 효율 극대화
 - **대용량 TIF 지원**: 25.8GB TIF 파일을 메모리에 올리지 않고 부분 읽기
+- **타일 기반 추론**: 대형 이미지를 1024x1024 타일로 분할하여 고해상도 검출
 - **GeoPackage 출력**: 검출 결과를 지리 좌표계와 함께 저장
 - **자동 통계 생성**: JSON, CSV, TXT 형식의 상세 보고서 자동 생성
 
@@ -228,6 +229,14 @@ Epoch 150:  92.2% mAP50 (최종)
 ```bash
 # 전체 파이프라인 실행
 python inference_system/examples/test_full_pipeline.py
+
+# 타일 기반 추론 (대형 이미지)
+python tile_based_inference.py \
+    --model runs/segment/silage_optimized/weights/best.pt \
+    --image path/to/cropped_image.png \
+    --output output_tiled \
+    --overlap 0.25 \
+    --conf 0.25
 
 # 또는 명령줄 인터페이스 사용
 python inference_system/src/pipeline.py \
@@ -239,8 +248,9 @@ python inference_system/src/pipeline.py \
 
 #### 시스템 성능
 - **크롭 속도**: 100개/분 (목표 50개/분의 2배)
-- **추론 속도**: 0.6초/폴리곤
+- **추론 속도**: 0.6초/폴리곤 (기본), 4-5초/이미지 (타일 기반)
 - **처리 성공률**: 100% (15/15 폴리곤)
+- **타일 기반 검출**: 15개 곤포사일리지 검출 (평균 신뢰도 73.0%)
 - **메모리 효율**: 대용량 TIF를 메모리에 올리지 않고 처리
 
 #### 출력 형식
@@ -248,11 +258,29 @@ python inference_system/src/pipeline.py \
 output/
 ├── silage_bale_detections.gpkg    # GeoPackage (좌표계 보존)
 ├── visualizations/                 # 검출 결과 시각화
-└── reports/
-    ├── statistics.json             # 전체 통계
-    ├── polygon_details.csv         # 폴리곤별 상세
-    └── summary.txt                 # 요약 보고서
+├── reports/
+│   ├── statistics.json             # 전체 통계
+│   ├── polygon_details.csv         # 폴리곤별 상세
+│   └── summary.txt                 # 요약 보고서
+└── output_tiled/                   # 타일 기반 추론 결과
+    ├── polygon_X_result.png        # 시각화 결과
+    └── polygon_X_results.json      # 검출 상세 정보
 ```
+
+#### 타일 기반 추론 시스템 (2025-10-28 추가)
+
+대형 크롭 이미지(2953x5721, 3381x6278 등)에서 작은 객체를 정확히 검출하기 위한 타일 기반 처리 시스템
+
+**핵심 기능:**
+- 이미지를 1024x1024 크기의 타일로 분할 (overlap 설정 가능)
+- 각 타일에서 독립적으로 추론 수행
+- NMS(Non-Maximum Suppression)로 중복 검출 제거
+- 글로벌 좌표계로 결과 통합 및 시각화
+
+**성능:**
+- Polygon 0: 3개 검출 (평균 신뢰도 76.4%, 2953x5721px)
+- Polygon 1: 12개 검출 (평균 신뢰도 69.6%, 3381x6278px)
+- 처리 시간: 4-5초/이미지 (NVIDIA RTX A6000)
 
 상세 가이드: [`inference_system/README.md`](inference_system/README.md)
 
