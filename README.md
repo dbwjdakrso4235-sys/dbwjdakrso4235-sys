@@ -267,20 +267,29 @@ output/
     └── polygon_X_results.json      # 검출 상세 정보
 ```
 
-#### 타일 기반 추론 시스템 (2025-10-28 추가)
+#### 타일 기반 추론 시스템 (2025-10-28 추가, v13: 2025-11-03 업데이트)
 
 대형 크롭 이미지(2953x5721, 3381x6278 등)에서 작은 객체를 정확히 검출하기 위한 타일 기반 처리 시스템
 
 **핵심 기능:**
 - 이미지를 1024x1024 크기의 타일로 분할 (overlap 설정 가능)
-- 각 타일에서 독립적으로 추론 수행
-- NMS(Non-Maximum Suppression)로 중복 검출 제거
+- 경계 타일 강화 검출 (border detection + 2-pass inference)
+- WBF(Weighted Boxes Fusion)로 중복 검출 제거
+- Watershed 알고리즘으로 대형 클러스터 재분할
+- Area-based 보정 카운팅 (실제 객체 수 추정)
+- 품질 필터링 (confidence, area, aspect ratio)
 - 글로벌 좌표계로 결과 통합 및 시각화
 
-**성능:**
-- Polygon 0: 3개 검출 (평균 신뢰도 76.4%, 2953x5721px)
-- Polygon 1: 12개 검출 (평균 신뢰도 69.6%, 3381x6278px)
+**v13 최신 성능 (오검출 제거):**
+- Polygon 0: 1개 검출 (신뢰도 65.5%, 5938x3170px)
+- Polygon 1: 18개 검출 → 40개 추정 (평균 신뢰도 71.4%, 6495x3599px)
 - 처리 시간: 4-5초/이미지 (NVIDIA RTX A6000)
+- 필터링: confidence ≥ 0.5, area ≥ 5000px, aspect_ratio ≤ 5.0
+
+**버전 히스토리:**
+- v11 (2025-11-02): 6대 개선사항 (경계 타일 강화, 2차 추론, 이원화 병합, Watershed, Area 카운팅)
+- v12 (2025-11-03): 품질 필터링 추가 (conf≥0.4, area≥3000px)
+- v13 (2025-11-03): 강화된 필터링 (conf≥0.5, area≥5000px, 1st pass: 0.30, 2nd pass: 0.28)
 
 상세 가이드: [`inference_system/README.md`](inference_system/README.md)
 
